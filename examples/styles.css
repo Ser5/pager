@@ -1,0 +1,22 @@
+* {box-sizing:border-box; padding:0; margin:0;}
+body {padding:10px 20px;}
+body, a {color:#333;}
+input[type="text"] {padding:1px 5px;}
+
+.params {display:flex;}
+	.params_item {padding-right:20px;}
+	.params_itemLabel {}
+	.params_itemInput {width:100%;}
+
+.pagerBlock {padding:100px 0px 0px 0px;}
+
+.pager {display:flex;}
+	.pager_part {display:flex;}
+	.pager_part:not(:last-of-type) {margin-right:15px;}
+	.pager_page {padding:3px 7px; border:1px solid #aaa; border-right-width:0;}
+	.pager_page, .pager_page:hover, .pager_page:active {text-decoration:none;}
+	.pager_page:first-of-type {border-top-left-radius:3px; border-bottom-left-radius:3px;}
+	.pager_page:last-of-type  {border-top-right-radius:3px; border-bottom-right-radius:3px; border-right-width:1px;}
+	.pager_page_mDisabled {color:#aaa;}
+	.pager_page_mGap {pointer-events:none;}
+	.pager_page_mActive {background:#85c0ff; pointer-events:none;}
