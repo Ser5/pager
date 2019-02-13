@@ -7,7 +7,12 @@ class PagerResult {
 
 	protected $pagesAmount;
 	protected $itemsAmount;
-	protected $sequencePartsAmount;
+	//protected $sequencePartsAmount;
+
+	protected $itemsFrom;
+	protected $itemsTo;
+
+	protected $pagesWindowWidth;
 
 	protected $pagesList;
 
@@ -26,7 +31,8 @@ class PagerResult {
 		$originalPageNumber,
 		$pageNumber,
 		$linker,
-		$pagesAmount,
+		$itemsFrom, $itemsTo,
+		$pagesAmount, $pagesWindowWidth,
 		$first, $rew, $prev, $sequence, $next, $ff, $last
 	) {
 		$this->originalPageNumber = $originalPageNumber;
@@ -35,6 +41,11 @@ class PagerResult {
 		$this->pagesAmount = $pagesAmount;
 		$this->itemsAmount = $itemsAmount;
 		//$this->sequencePartsAmount = ;
+
+		$this->itemsFrom = $itemsFrom;
+		$this->itemsTo   = $itemsTo;
+
+		$this->pagesWindowWidth = $pagesWindowWidth;
 
 		$this->first    = $first;
 		$this->rew      = $rew;
@@ -86,6 +97,34 @@ class PagerResult {
 	 */
 	public function countItems () {
 		return $this->itemsAmount;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getItemsFrom () {
+		return $this->itemsFrom;
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getItemsTo () {
+		return $this->itemsTo;
+	}
+
+	/**
+	 * @return array
+	 */
+	public function getLimit () {
+		return [$this->itemsFrom, $this->itemsTo - $this->itemsFrom];
+	}
+
+	/**
+	 * @return int
+	 */
+	public function getPagesWindowWidth () {
+		return $this->pagesWindowWidth;
 	}
 
 	/*public function countSequenceParts () {

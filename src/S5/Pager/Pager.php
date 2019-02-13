@@ -224,7 +224,8 @@ class Pager {
 			$originalPageNumber,
 			$pageNumber,
 			$linker,
-			$pagesAmount,
+			$itemsFrom, $itemsTo,
+			$pagesAmount, $pagesWindowWidth,
 			$firstPage, $rewPage, $prevPage, $sequence, $nextPage, $ffPage, $lastPage
 		);
 

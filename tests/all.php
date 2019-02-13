@@ -3,7 +3,7 @@ require_once '../src/S5/Pager/Page.php';
 require_once '../src/S5/Pager/Pager.php';
 require_once '../src/S5/Pager/AmountPager.php';
 require_once '../src/S5/Pager/PagerResult.php';
-require_once '../src/S5/Pager/Sequence.php';
+//require_once '../src/S5/Pager/Sequence.php';
 
 use \S5\Pager\Pager;
 ?>
