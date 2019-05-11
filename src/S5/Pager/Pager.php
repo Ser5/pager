@@ -69,14 +69,14 @@ class Pager {
 	 * @return PagerResult
 	 */
 	public static function calc ($params) {
-		//Проверка параметров
-		static::checkItemsAmount($params);
-		$params = static::checkItemsPerPage($params);
-		$params = static::checkTemplate($params);
-		$params = static::checkLinker($params);
-		$params = static::checkPageNumber($params);
-
 		$p = $params;
+
+		//Проверка параметров
+		$p = static::checkItemsAmount($p);
+		$p = static::checkItemsPerPage($p);
+		$p = static::checkTemplate($p);
+		$p = static::checkLinker($p);
+		$p = static::checkPageNumber($p);
 
 		$originalPageNumber = $p['page_number'];
 		$itemsAmount        = $p['items_amount'];
@@ -84,138 +84,140 @@ class Pager {
 		$pageNumber         = $p['page_number'];
 		$linker             = $p['linker'];
 
-		//Количество страниц
-		$pagesAmount = (int)ceil($itemsAmount / $itemsPerPage);
+		$itemsFrom = $itemsTo = 0;
+		$pagesAmount = $pagesWindowWidth = 0;
+		$firstPage = $rewPage = $prevPage = null;
+		$nextPage  = $ffPage  = $lastPage = null;
 
-		//Корректировка номера текущей страницы
-		if (!ctype_digit((string)$pageNumber)) {
-			$pageNumber = 1;
-		} elseif ($pageNumber < 1) {
-			$pageNumber = 1;
-		} elseif ($pageNumber > $pagesAmount) {
-			$pageNumber = $pagesAmount;
-		}
+		if ($itemsAmount) {
+			//Количество страниц
+			$pagesAmount = (int)ceil($itemsAmount / $itemsPerPage);
 
-		//Был ли номер страницы изменён относительно переданного в параметрах
-		$isPageNumberFixed = ((string)$pageNumber != (string)$originalPageNumber);
-
-		//С какой по какую запись будет происходить вывод
-		$itemsFrom = 1 + ($itemsPerPage * ($pageNumber - 1));
-		$itemsTo   = min($itemsAmount, $itemsPerPage * $pageNumber);
-
-		//Сборка диапазонов страниц исходя из того, что указано в шаблоне
-		$rangeStringsList = preg_split('/\s+/', $p['template']);
-		$isMiddleRange    = false;
-		$pagesWindowWidth = false;
-		$rangesList       = [];
-		$matches          = [];
-		foreach ($rangeStringsList as $rangeString) {
-			if (preg_match('/^\[(\d*)$/', $rangeString, $matches)) {
-				if (count($matches) < 2) {
-					$rangesList[] = [1, 1];
-				} else {
-					$rangesList[] = [1, $matches[1]];
-				}
-			} elseif (preg_match('/^(\d*)\]$/', $rangeString, $matches)) {
-				if (count($matches) < 2) {
-					$rangesList[] = [$pagesAmount, $pagesAmount];
-				} else {
-					$rangesList[] = [$pagesAmount-$matches[1]+1, $pagesAmount];
-				}
-			} elseif (preg_match('/^(\d*)\*(\d*)$/', $rangeString, $matches)) {
-				$isMiddleRange    = true;
-				$range            = [];
-				$pagesWindowWidth = 1;
-				if ($matches[1]) {
-					$range[]           = $pageNumber-$matches[1];
-					$pagesWindowWidth += $matches[1];
-				} else {
-					$range[] = $pageNumber;
-				}
-				if ($matches[2]) {
-					$range[]           = $pageNumber+$matches[2];
-					$pagesWindowWidth += $matches[2];
-				} else {
-					$range[] = $pageNumber;
-				}
-				//Сдвигаем диапазон, если он не лезет в окно
-				if ($range[0] < 1) {
-					$range[1] += (1 - $range[0]);
-					$range[0] = 1;
-				} elseif ($range[1] > $pagesAmount) {
-					$range[0] -= ($range[1] - $pagesAmount);
-					$range[1] = $pagesAmount;
-				}
-				$rangesList[] = $range;
+			//Корректировка номера текущей страницы
+			if (!ctype_digit((string)$pageNumber)) {
+				$pageNumber = 1;
+			} elseif ($pageNumber < 1) {
+				$pageNumber = 1;
+			} elseif ($pageNumber > $pagesAmount) {
+				$pageNumber = $pagesAmount;
 			}
-		}
 
-		//Чиним вылезание за края
-		foreach ($rangesList as &$range) {
-			$range = [max(1,$range[0]), min($pagesAmount,$range[1])];
-		}
-		unset($range);
+			//С какой по какую запись будет происходить вывод
+			$itemsFrom = ($itemsPerPage * ($pageNumber - 1));
+			$itemsTo   = min($itemsAmount - 1, ($itemsPerPage * $pageNumber) - 1);
 
-		//Слияние пересекающихся диапазонов страниц
-		do {
-			$isRestart    = false;
-			$rangesAmount = count($rangesList);
-			if ($rangesAmount > 1) {
-				for ($a = 0; $a < $rangesAmount-1; $a++) {
-					for ($b = $a+1; $b < $rangesAmount; $b++) {
-						$range1 = &$rangesList[$a];
-						$range2 = $rangesList[$b];
-						if (
-							($range2[0] >= $range1[0] and $range2[0] <= $range1[1] + 1) or
-							($range1[0] >= $range2[0] and $range1[0] <= $range2[1] + 1)
-						) {
-							$range1[0] = min($range1[0], $range2[0]);
-							$isRestart = true;
-						}
-						if (
-							($range2[1] >= $range1[0] - 1 and $range2[1] <= $range1[1]) or
-							($range1[1] >= $range2[0] - 1 and $range1[1] <= $range2[1])
-						) {
-							$range1[1] = max($range1[1], $range2[1]);
-							$isRestart = true;
-						}
-						if ($isRestart) {
-							array_splice($rangesList, $b, 1);
-							break 2;
+			//Сборка диапазонов страниц исходя из того, что указано в шаблоне
+			$rangeStringsList = preg_split('/\s+/', $p['template']);
+			$isMiddleRange    = false;
+			$pagesWindowWidth = false;
+			$rangesList       = [];
+			$matches          = [];
+			foreach ($rangeStringsList as $rangeString) {
+				if (preg_match('/^\[(\d*)$/', $rangeString, $matches)) {
+					if (count($matches) < 2) {
+						$rangesList[] = [1, 1];
+					} else {
+						$rangesList[] = [1, $matches[1]];
+					}
+				} elseif (preg_match('/^(\d*)\]$/', $rangeString, $matches)) {
+					if (count($matches) < 2) {
+						$rangesList[] = [$pagesAmount, $pagesAmount];
+					} else {
+						$rangesList[] = [$pagesAmount-$matches[1]+1, $pagesAmount];
+					}
+				} elseif (preg_match('/^(\d*)\*(\d*)$/', $rangeString, $matches)) {
+					$isMiddleRange    = true;
+					$range            = [];
+					$pagesWindowWidth = 1;
+					if ($matches[1]) {
+						$range[]           = $pageNumber-$matches[1];
+						$pagesWindowWidth += $matches[1];
+					} else {
+						$range[] = $pageNumber;
+					}
+					if ($matches[2]) {
+						$range[]           = $pageNumber+$matches[2];
+						$pagesWindowWidth += $matches[2];
+					} else {
+						$range[] = $pageNumber;
+					}
+					//Сдвигаем диапазон, если он не лезет в окно
+					if ($range[0] < 1) {
+						$range[1] += (1 - $range[0]);
+						$range[0] = 1;
+					} elseif ($range[1] > $pagesAmount) {
+						$range[0] -= ($range[1] - $pagesAmount);
+						$range[1] = $pagesAmount;
+					}
+					$rangesList[] = $range;
+				}
+			}
+
+			//Чиним вылезание за края
+			foreach ($rangesList as &$range) {
+				$range = [max(1,$range[0]), min($pagesAmount,$range[1])];
+			}
+			unset($range);
+
+			//Слияние пересекающихся диапазонов страниц
+			do {
+				$isRestart    = false;
+				$rangesAmount = count($rangesList);
+				if ($rangesAmount > 1) {
+					for ($a = 0; $a < $rangesAmount-1; $a++) {
+						for ($b = $a+1; $b < $rangesAmount; $b++) {
+							$range1 = &$rangesList[$a];
+							$range2 = $rangesList[$b];
+							if (
+								($range2[0] >= $range1[0] and $range2[0] <= $range1[1] + 1) or
+								($range1[0] >= $range2[0] and $range1[0] <= $range2[1] + 1)
+							) {
+								$range1[0] = min($range1[0], $range2[0]);
+								$isRestart = true;
+							}
+							if (
+								($range2[1] >= $range1[0] - 1 and $range2[1] <= $range1[1]) or
+								($range1[1] >= $range2[0] - 1 and $range1[1] <= $range2[1])
+							) {
+								$range1[1] = max($range1[1], $range2[1]);
+								$isRestart = true;
+							}
+							if ($isRestart) {
+								array_splice($rangesList, $b, 1);
+								break 2;
+							}
 						}
 					}
 				}
-			}
-		} while ($isRestart);
+			} while ($isRestart);
 
-		//Сборка массива с номерами страниц
-		$sequence = [];
-		if ($isMiddleRange) {}
-		for ($rangeIx = 0; $rangeIx < $rangesAmount; $rangeIx++) {
-			for ($n = $rangesList[$rangeIx][0]; $n <= $rangesList[$rangeIx][1]; $n++) {
-				$sequence[] = new Page('number', $n, $linker);
+			//Сборка массива с номерами страниц
+			$sequence = [];
+			if ($isMiddleRange) {}
+			for ($rangeIx = 0; $rangeIx < $rangesAmount; $rangeIx++) {
+				for ($n = $rangesList[$rangeIx][0]; $n <= $rangesList[$rangeIx][1]; $n++) {
+					$sequence[] = new Page('number', $n, $linker);
+				}
+				if ($rangeIx < $rangesAmount - 1) {
+					$sequence[] = new Page('gap');
+				}
 			}
-			if ($rangeIx < $rangesAmount - 1) {
-				$sequence[] = new Page('gap');
-			}
-		}
 
-		//Сборка кнопок
-		$firstPage = $rewPage = $prevPage = null;
-		if ($pageNumber > 1) {
-			$firstPage = new Page('first', 1, $linker);
-			if ($pagesWindowWidth) {
-				$rewPage  = new Page('rew', max(1, $pageNumber - $pagesWindowWidth), $linker);
-				$prevPage = new Page('prev', $pageNumber - 1, $linker);
+			//Сборка кнопок
+			if ($pageNumber > 1) {
+				$firstPage = new Page('first', 1, $linker);
+				if ($pagesWindowWidth) {
+					$rewPage  = new Page('rew', max(1, $pageNumber - $pagesWindowWidth), $linker);
+					$prevPage = new Page('prev', $pageNumber - 1, $linker);
+				}
 			}
-		}
-		$nextPage = $ffPage = $lastPage = null;
-		if ($pageNumber < $pagesAmount) {
-			if ($pagesWindowWidth) {
-				$nextPage = new Page('next', $pageNumber + 1, $linker);
-				$ffPage   = new Page('ff',   min($pagesAmount, $pageNumber + $pagesWindowWidth), $linker);
+			if ($pageNumber < $pagesAmount) {
+				if ($pagesWindowWidth) {
+					$nextPage = new Page('next', $pageNumber + 1, $linker);
+					$ffPage   = new Page('ff',   min($pagesAmount, $pageNumber + $pagesWindowWidth), $linker);
+				}
+				$lastPage = new Page('last', $pagesAmount, $linker);
 			}
-			$lastPage = new Page('last', $pagesAmount, $linker);
 		}
 
 		$pagerResult = new PagerResult(
@@ -256,8 +258,8 @@ class Pager {
 		if (!ctype_digit((string)$p['items_amount'])) {
 			throw new \InvalidArgumentException("items_amount: expected int, got [$p[items_amount]]");
 		}
-		if ($p['items_amount'] < 1) {
-			throw new \InvalidArgumentException("items_amount: expected >=0, got [$p[items_amount]]");
+		if ($p['items_amount'] < 0) {
+			$p['items_amount'] = 0;
 		}
 		return $p;
 	}

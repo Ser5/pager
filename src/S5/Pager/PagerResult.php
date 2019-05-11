@@ -117,7 +117,7 @@ class PagerResult {
 	 * @return array
 	 */
 	public function getLimit () {
-		return [$this->itemsFrom, $this->itemsTo - $this->itemsFrom];
+		return [$this->itemsFrom, $this->itemsTo - $this->itemsFrom + 1];
 	}
 
 	/**
